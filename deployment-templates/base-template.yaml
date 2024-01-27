@@ -1,0 +1,92 @@
+# This file is a template to be used in conjuction with initializeAppConfig.js script
+deployment:
+  restartPolicy: Always
+  #set sourceEnv to true if environment variables from Vault should be poplulated in /vault/secrets/source.sh of the container
+  sourceEnv: true
+  #provide the list of filenames to be created inside /vault/secrets from vault Env scope
+  mountEnvFiles: [ ]
+  # - filename.txt # this would create /vault/secrets/filename.txt in the container
+  #provide the list of filenames to be created inside /vault/secrets from vault Bubble scope
+  mountBubbleFiles: [ ]
+  #provide the list of filenames to be created inside /vault/secrets from vault Service scope
+  mountServiceFiles: [ ]
+  strategy: { }
+  initContainers: [ ]
+  volumes: [ ]
+  containers:
+    - name: $SERVICE # this name can be anything it can contain at most 63 characters, contain only lowercase alphanumeric characters or '-', start with an alphabetic character, end with an alphanumeric character
+      image: {}
+      securityContext: { }
+      args: [ ]
+      env:
+        - name: PUBLIC_URL
+          value: $PATH_FOR_HOSTING
+      envFrom: [ ]
+      ports:
+        - containerPort: 80 # the port on which this application is listening
+          name: http # the port name to identify the port ex: http, grpc, etc.
+          # since this is a list multiple ports can be added
+          # care should be taken to have unique name for a give port within this specification
+      resources: { }
+      # ref link: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+      livenessProbe:
+        # the port in tcpSocket or httpGet can be different from one configured above
+        # tcp check
+        tcpSocket:
+          port: 80
+        initialDelaySeconds: 20
+        periodSeconds: 5
+        timeoutSeconds: 10
+      readinessProbe:
+        # tcp check
+        tcpSocket:
+          port: 80
+        initialDelaySeconds: 20
+        periodSeconds: 5
+        timeoutSeconds: 10
+service:
+  annotations: { }
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80 # the port on which this application is listening
+      targetPort: 80 # the port on which this application is listening
+      name: http # the port name to identify the port ex: http, grpc, etc.
+      # since this is a list multiple ports can be added
+      # care should be taken to have unique name for a give port within this specification
+  externalTrafficPolicy: { }
+ingresses:
+  internal:
+    - annotations: [ ]
+        #nginx.ingress.kubernetes.io/rewrite-target: /$2
+      #the above annotation rewrites the path before passing it to backend
+      spec:
+        tls:
+          - hosts: [ $HOST ]
+            secretName: $API_HOST_SECRET
+        rules:
+          - host: $HOST
+            http:
+              paths:
+                - path: $PATH_FOR_HOSTING
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: $SERVICE
+                      port:
+                        number: 80 
+
+resources:
+  # ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 25m
+    memory: 32Mi
+autoScaler:
+  # the below need not be changed, they are environment specific
+  config:
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPUUtilizationPercentage: 70
